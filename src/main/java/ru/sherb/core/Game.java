@@ -9,11 +9,11 @@ import java.awt.*;
 public final class Game extends Collection implements Runnable {
     private static IRender render;
 
-    public static void setRender(IRender render) {
+    private static void setRender(IRender render) {
         if (Game.render == null) Game.render = render;
     }
 
-    public static IRender getRender() {
+    static IRender getRender() {
         if (render == null) throw new NullPointerException("render must be initialized");
 
         return render;

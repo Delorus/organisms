@@ -18,7 +18,7 @@ class ControllerTest {
     @BeforeEach
     void setUp() {
         factory = new OrganismFactory();
-        controller = new Controller();
+        controller = new Controller(0, 0, null, null);
         factory.setController(controller);
         factory.setOrganismSize(new Point2D.Float(10, 10));
     }
@@ -31,7 +31,7 @@ class ControllerTest {
     @Test
     void getOrganism() {
         factory.createWithRandChromosomes(new Point2D.Float(2, 2), 3);
-        Organism organism = controller.getOrganism(new Point2D.Float(2, 2));
+        Organism organism = controller.getOrganism(2, 2).get();
         assertNotNull(organism);
 
     }

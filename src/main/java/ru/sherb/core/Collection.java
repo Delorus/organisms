@@ -111,7 +111,7 @@ public abstract class Collection<E extends VisualObject> extends GameObject {
         }
     }
 
-    public void render() {
+    void render() {
         if (collections != null) {
             for (Collection collection : collections) {
                 collection.render();

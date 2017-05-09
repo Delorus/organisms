@@ -18,7 +18,7 @@ class OrganismTest {
     @BeforeEach
     void setUp() {
         factory = new OrganismFactory();
-        controller = new Controller();
+        controller = new Controller(0, 0, null, null);
         factory.setController(controller);
         factory.setOrganismSize(new Point2D.Float(10, 10));
     }

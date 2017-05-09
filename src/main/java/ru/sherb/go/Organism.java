@@ -1,11 +1,11 @@
 package ru.sherb.go;
 
+import com.sun.org.apache.xpath.internal.operations.Or;
 import ru.sherb.core.VisualObject;
 
 import java.awt.geom.Point2D;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.stream.Stream;
+import java.util.*;
+import java.util.function.Predicate;
 
 class Organism extends VisualObject {
 
@@ -121,6 +121,39 @@ class Organism extends VisualObject {
 
     private byte age;
     private byte energy;
+    // Существующий алгоритм будет нормально функционировать только при значении eyeshot = 1
+    // Т.к. для некоторый действий требуется, что бы организмы стояли вплотную друг к другу
+    // Для нормального функционирования стоит реализовать механизм движения организма к его цели
+    private byte eyeshot = 1; //TODO сделать зависимость от гена SENSITIVITY
+
+    //TODO сделать кэширование соседей, если потребуется оптимизация
+
+
+    private State state;
+
+    enum State {
+        DEAD,
+        SLEEP,
+        ESTRUS,
+        REPRODUCE,
+        ATTACK,
+        EAT, //а надо ли?
+        MOVE;
+
+        static Organism other;
+
+        void with(Organism other) {
+            State.other = other;
+        }
+
+        Optional<Organism> with() {
+            return Optional.ofNullable(other);
+        }
+    }
+
+
+
+    private ArrayList<Organism> neighbors; //TODO изменить на LinkedList когда соседей станет больше 8
 
 
     Organism(Point2D.Float size, Controller controller, Chromosome... chromosomes) {
@@ -131,7 +164,6 @@ class Organism extends VisualObject {
 
         this.controller = controller;
         this.controller.addVisualObject(this);
-
     }
 
     /**
@@ -252,20 +284,153 @@ class Organism extends VisualObject {
     @Override
     public void init() {
         this.phenotype = identifyPhenotype(this.chromosomes);
-
         //init hereditaryChromosome;
     }
 
     @Override
     public void update(float dt) {
-
+        switch (controller.getPhase()) {
+            case PREPARE:
+                prepare();
+                break;
+            case ACTION:
+                action();
+                break;
+        }
+        prepare();
     }
 
-    boolean isToOld() {
+    /**
+     * Стадия подготовки к действию.
+     * <br/>
+     * На этой стадии организм решает каким образом он будет действовать в этом ходу.
+     * Результатом его выбора является установка флага состояния в {@link Organism#state}
+     *
+     * <p/>
+     * Алгоритм выбора состояния:
+     * <ul>
+     *      <li>Проверяется, привысила ли клетка заложенный максимальный возраст, если да, то она выставляет флаг смерти {@link State#DEAD} и завершает ход</li>
+     *
+     *      <li>Клетка подвергается воздействию среды (см. {@link Organism#getEffectFromEnvironment()})</li>
+     *
+     *      <li>Если энергия клетки равна 0, то клетка выставляет флаг сна {@link State#SLEEP} и завершает ход</li>
+     *
+     *      <li>Если энергия клетки меньше нуля, то она выставляет флаг смерти {@link State#DEAD} и завершает ход</li>
+     *
+     *      <li>Если энергия клетки больше или равна значению, обратно пропорциональному гену репродукции,
+     *      то клетка проверяет у соседей наличие статуса "готов к спариванию" {@link State#ESTRUS},
+     *      если такой найден, то клетка устанавливает статус "спаривание" ({@link State#REPRODUCE}) и указывает его в качестве партнера,
+     *      если же таких нет, то она сама ставит статус "готов к спариванию" и завершает ход</li>
+     *
+     *      <li>Если энергии клетки меньше чем ее агрессия, то клетка начинает искать, кто из ее соседей подойдет ей в качестве пищи,
+     *      если такой найден, то клетка выставляет статус нападения {@link State#ATTACK}, установив его в качестве своей цели, и завершает ход</li>
+     *
+     *      <li>Если количество соседей умноженное на 16, больше чем социальность организма,
+     *      то организм ставит флаг перемещение({@link State#MOVE}) на любую незанятую соседнюю клетку</li>
+     *
+     *      <li>Если количество соседей, делающих одно и тоже, умноженное на 16, больше чем число, обратно пропорциональное гену эмпатии,
+     *      то организм скопирует их поведение (флаги)</li>
+     * </ul>
+     */
+    void prepare() {
+        if (isTooOld()) {
+            state = State.DEAD;
+            return;
+        }
+
+        getEffectFromEnvironment();
+
+        if (energy == 0) {
+            state = State.SLEEP;
+            return;
+        }
+        if (energy < 0) {
+            state = State.DEAD;
+            return;
+        }
+
+        neighbors = null; //TODO из-за параллельного выполнение данные могут быть не актуальными
+
+        if (energy >= (Byte.MAX_VALUE + 1 - phenotype.get(Chromosome.REPRODUCTION))) {
+            //TODO изменить механизм: удалить состояние "спаривание", оставить только готовность
+            final Optional<Organism> readyToMateOrg = checkNeighbors(eyeshot, organism -> organism.state.equals(State.ESTRUS));
+            if (!readyToMateOrg.isPresent()) {
+                state = State.ESTRUS;
+                return;
+            }
+
+            state = State.REPRODUCE;
+            state.with(readyToMateOrg.get());
+            return;
+        }
+
+        if (energy < phenotype.get(Chromosome.AGGRESSION)) {
+            final Optional<Organism> food = checkNeighbors(eyeshot, organism ->
+                    checkForMatchGene(organism.phenotype.get(Chromosome.TYPE), phenotype.get(Chromosome.NUTRITION)) == 0);
+
+            if (food.isPresent()) {
+                state = State.ATTACK;
+                state.with(food.get());
+                return;
+            }
+        }
+
+        //TODO доделать социальность и эмпатию
+    }
+
+    boolean isTooOld() {
         return age >= phenotype.get(Chromosome.AGE);
     }
 
-    
+    private void getEffectFromEnvironment() {
+        final Optional<Biome> currentBiome = controller.getBiome(getPosition());
+        if (currentBiome.isPresent()) {
+            final int resistance = checkForMatchGene(currentBiome.get().getInfluence(), phenotype.get(Chromosome.RESISTANCE)); //~(~currentBiome.get().getInfluence() | phenotype.get(Chromosome.RESISTANCE));
+            if (resistance > 0) {
+                energy -= Integer.bitCount(resistance & 0xff);
+            }
+        }
+    }
+
+    private Optional<Organism> checkNeighbors(int range, Predicate<Organism> predicate) {
+        final int x = (int) getPosition().x;
+        final int y = (int) getPosition().y;
+
+        if (neighbors == null) {
+            neighbors = new ArrayList<>(8);
+            for (int i = controller.motion(x - range);
+                 i != controller.motion(x + range + 1);
+                 controller.motion(i++)) {
+
+                for (int j = controller.motion(y - range);
+                     j != controller.motion(y + range + 1);
+                     controller.motion(j++)) {
+
+                    controller.getOrganism(i, j).ifPresent(organism -> {
+                        if (!organism.equals(this)) {
+                            neighbors.add(organism);
+                        }
+                    });
+                }
+            }
+        }
+
+        return neighbors.stream()
+                .filter(predicate)
+                .findFirst();
+    }
+
+    private int checkForMatchGene(byte effect, byte gene) {
+        return ~(~effect | gene);
+    }
+
+    private void action() {
+
+    }
+
+    State getState() {
+        return state;
+    }
 
     @Override
     public void end() {

@@ -7,11 +7,10 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public final class Controller extends Collection<Organism> {
+    private final Point.Float organismSize;
     private final int size;
-    private final int cellSize;
     private final Color color;
     private final Color cellColor;
 
@@ -27,9 +26,13 @@ public final class Controller extends Collection<Organism> {
 
     public Controller(int universeSize, Color universeColor, Color cellColor) {
         this.size = universeSize;
-        this.cellSize = 10;
+        this.organismSize = new Point.Float(10, 10);
         this.color = universeColor;
         this.cellColor = cellColor;
+    }
+
+    public Point.Float getOrganismSize() {
+        return organismSize;
     }
 
     public void setCellScale(Point2D.Float scale) {

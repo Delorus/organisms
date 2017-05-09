@@ -5,11 +5,10 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class OrganismFactory {
-    private Controller controller;
+    final private Controller controller;
     private HashMap<String, Organism.Chromosome> chromosomes = new HashMap<>();
-    private Point2D.Float organismSize = new Point2D.Float();
 
-    public void setController(Controller controller) {
+    public OrganismFactory(Controller controller) {
         this.controller = controller;
     }
 
@@ -21,12 +20,8 @@ public class OrganismFactory {
         chromosomes.remove(name);
     }
 
-    public void setOrganismSize(Point2D.Float size) {
-        organismSize.setLocation(size);
-    }
-
     public Organism createWithOneChromosome(Point2D.Float position, String chromosomeName) {
-        final Organism organism = new Organism(organismSize, controller, chromosomes.get(chromosomeName));
+        final Organism organism = new Organism(controller, chromosomes.get(chromosomeName));
         organism.setPosition(position);
         return organism;
     }
@@ -37,7 +32,7 @@ public class OrganismFactory {
             chromosomes[i] = this.chromosomes.get(chromosomeNames[i]);
         }
 
-        final Organism organism = new Organism(organismSize, controller, chromosomes);
+        final Organism organism = new Organism(controller, chromosomes);
         organism.setPosition(position);
         return organism;
     }
@@ -48,7 +43,7 @@ public class OrganismFactory {
                 .filter(o -> Math.random() <= 0.5)
                 .toArray(Organism.Chromosome[]::new);
 
-        final Organism organism = new Organism(organismSize, controller, randChromosomes);
+        final Organism organism = new Organism(controller, randChromosomes);
         organism.setPosition(position);
         return organism;
     }
@@ -73,7 +68,7 @@ public class OrganismFactory {
             );
         });
 
-        final Organism organism = new Organism(organismSize, controller, chromosomeStream.limit(countChromosomes).toArray(Organism.Chromosome[]::new));
+        final Organism organism = new Organism(controller, chromosomeStream.limit(countChromosomes).toArray(Organism.Chromosome[]::new));
         organism.setPosition(position);
         return organism;
     }

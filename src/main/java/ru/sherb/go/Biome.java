@@ -1,5 +1,6 @@
 package ru.sherb.go;
 
+import java.awt.*;
 import java.awt.geom.Point2D;
 import java.util.HashSet;
 import java.util.Random;
@@ -26,6 +27,14 @@ public class Biome {
     }
 
 
+    /**
+     * Генерирует квадратный биом начиная с {@code startPos} включительно и заканчивая {@code endPos} (исключительно)
+     * @param influence тип воздействия на организмы (см. {@link Biome#influence}
+     * @param generateLight будет ли биом генерировать свет (свет является пищей для некоторых организмов)
+     * @param startPos начальная точка биома, должна быть выше и левее, чем {@code endPos} (включительно)
+     * @param endPos конечная точна биома, должна быть ниже и правее, чем {@code startPos} (исключительно)
+     * @return сгенерированный биом, с указанными параметрами
+     */
     public static Biome createSquareBiome(byte influence, boolean generateLight, Point2D.Float startPos, Point2D.Float endPos) {
 
         assert startPos.x < endPos.x && startPos.y < endPos.y;

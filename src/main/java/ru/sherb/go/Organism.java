@@ -1,10 +1,11 @@
 package ru.sherb.go;
 
-import com.sun.org.apache.xpath.internal.operations.Or;
 import ru.sherb.core.VisualObject;
 
-import java.awt.geom.Point2D;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 class Organism extends VisualObject {
@@ -156,8 +157,8 @@ class Organism extends VisualObject {
     private ArrayList<Organism> neighbors; //TODO изменить на LinkedList когда соседей станет больше 8
 
 
-    Organism(Point2D.Float size, Controller controller, Chromosome... chromosomes) {
-        super(size);
+    Organism(Controller controller, Chromosome... chromosomes) {
+        super(controller.getOrganismSize());
 
         assert chromosomes[0] != null;
         this.chromosomes = chromosomes.clone();
@@ -332,7 +333,7 @@ class Organism extends VisualObject {
      *      то организм скопирует их поведение (флаги)</li>
      * </ul>
      */
-    void prepare() {
+    void prepare() { //TODO добавить поедание света и (?)мертвых клеток(?)
         if (isTooOld()) {
             state = State.DEAD;
             return;

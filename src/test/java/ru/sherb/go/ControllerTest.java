@@ -18,7 +18,7 @@ class ControllerTest {
     @BeforeEach
     void setUp() {
         factory = new OrganismFactory(controller);
-        controller = new Controller(0, null, null);
+        controller = new Controller(0);
     }
 
     @Test

@@ -28,6 +28,10 @@ public class RenderCPU implements IRender {
 
     @Override
     public void paint(Collection parent, VisualObject... visualObjects) {
+        Graphics clearArea = canvas.getGraphics();
+        clearArea.setColor(backgroundColor);
+        clearArea.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        clearArea.dispose();
 
         Arrays.stream(visualObjects).forEach(visualObject -> {
             final Graphics graphics = canvas.getGraphics();

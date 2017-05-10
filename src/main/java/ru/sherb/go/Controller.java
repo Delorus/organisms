@@ -7,12 +7,11 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public final class Controller extends Collection<Organism> {
     private final Point.Float organismSize;
     private final int size;
-    private final Color color;
-    private final Color cellColor;
 
     private Phase phase;
 
@@ -24,11 +23,9 @@ public final class Controller extends Collection<Organism> {
         ACTION
     }
 
-    public Controller(int universeSize, Color universeColor, Color cellColor) {
+    public Controller(int universeSize) {
         this.size = universeSize;
         this.organismSize = new Point.Float(10, 10);
-        this.color = universeColor;
-        this.cellColor = cellColor;
     }
 
     public Point.Float getOrganismSize() {
@@ -108,19 +105,22 @@ public final class Controller extends Collection<Organism> {
                 break;
             case COLLISION:
                 //TODO удалить все "мертвые" объекты
-                getVisualObjects().stream()
-                        .filter(organism -> organism.getState().equals(Organism.State.DEAD))
-                        .forEach(this::removeVisualObject);
-//                getVisualObjects().removeAll(getVisualObjects().stream()
-//                        .filter(organism -> organism.getState().equals(Organism.State.DEAD))
-//                        .collect(Collectors.toList())
-//                );
+                assert getVisualObjects() != null;
+                final List<Organism> organisms = getVisualObjects().stream()
+                        .filter(organism -> Organism.State.DEAD.equals(organism.getState()))
+                        .collect(Collectors.toList());
+                for (Organism organism : organisms) {
+                    removeVisualObject(organism);
+                }
                 //TODO разобраться с коллизией
                 phase = Phase.ACTION;
                 break;
             case ACTION:
                 //TODO обновить состояние игрового поля
                 //TODO распараллелить действие
+                for (Organism organism : getVisualObjects()) {
+                    organism.update(dt);
+                }
                 phase = Phase.PREPARE;
                 break;
         }

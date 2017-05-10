@@ -119,11 +119,10 @@ public abstract class Collection<E extends VisualObject> extends GameObject {
         }
 
         if (visualObjects != null) {
-            for (VisualObject vo : visualObjects) {
-                if (vo.isShouldBeRender()) {
-                    Game.getRender().paint(this, vo);
-                }
-            }
+            Game.getRender().paint(this, visualObjects.stream()
+                    .filter(VisualObject::isShouldBeRender)
+                    .toArray(VisualObject[]::new)
+            );
         }
     }
 }

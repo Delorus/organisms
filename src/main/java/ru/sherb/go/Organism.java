@@ -2,6 +2,7 @@ package ru.sherb.go;
 
 import ru.sherb.core.VisualObject;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -63,7 +64,7 @@ class Organism extends VisualObject {
 
         @Override
         protected Chromosome clone() {
-            final Chromosome clone = new Chromosome(
+            return new Chromosome(
                     this.get(Chromosome.EFFICIENCY),
                     this.get(Chromosome.AGE),
                     this.get(Chromosome.POWER),
@@ -76,7 +77,6 @@ class Organism extends VisualObject {
                     this.get(Chromosome.NUTRITION),
                     this.get(Chromosome.TYPE)
             );
-            return clone;
         }
 
         @Override
@@ -284,8 +284,12 @@ class Organism extends VisualObject {
 
     @Override
     public void init() {
-        this.phenotype = identifyPhenotype(this.chromosomes);
+        phenotype = identifyPhenotype(this.chromosomes);
+        this.age = 0;
+        this.energy = phenotype.get(Chromosome.EFFICIENCY); //TODO решить, ограничивать ли количество энергии или нет
+        //TODO доделать метод
         //init hereditaryChromosome;
+        setShouldBeRender(true);
     }
 
     @Override
@@ -295,10 +299,14 @@ class Organism extends VisualObject {
                 prepare();
                 break;
             case ACTION:
+                assert state != null;
                 action();
+                age++;
+                setColorDependState();
+                setShouldBeRender(true);
+                System.out.println(toString());
                 break;
         }
-        prepare();
     }
 
     /**
@@ -354,7 +362,7 @@ class Organism extends VisualObject {
 
         if (energy >= (Byte.MAX_VALUE + 1 - phenotype.get(Chromosome.REPRODUCTION))) {
             //TODO изменить механизм: удалить состояние "спаривание", оставить только готовность
-            final Optional<Organism> readyToMateOrg = checkNeighbors(eyeshot, organism -> organism.state.equals(State.ESTRUS));
+            final Optional<Organism> readyToMateOrg = checkNeighbors(eyeshot, organism -> State.ESTRUS.equals(organism.state));
             if (!readyToMateOrg.isPresent()) {
                 state = State.ESTRUS;
                 return;
@@ -377,6 +385,7 @@ class Organism extends VisualObject {
         }
 
         //TODO доделать социальность и эмпатию
+        state = State.SLEEP;
     }
 
     boolean isTooOld() {
@@ -401,11 +410,11 @@ class Organism extends VisualObject {
             neighbors = new ArrayList<>(8);
             for (int i = controller.motion(x - range);
                  i != controller.motion(x + range + 1);
-                 controller.motion(i++)) {
+                 i = controller.motion(i + 1)) {
 
                 for (int j = controller.motion(y - range);
                      j != controller.motion(y + range + 1);
-                     controller.motion(j++)) {
+                     j = controller.motion(j + 1)) {
 
                     controller.getOrganism(i, j).ifPresent(organism -> {
                         if (!organism.equals(this)) {
@@ -425,8 +434,35 @@ class Organism extends VisualObject {
         return ~(~effect | gene);
     }
 
-    private void action() {
+    void setColorDependState() {
+        //TODO перенести выбор цвета в num
+        switch (state) {
+            case DEAD:
+                setColor(Color.YELLOW);
+                break;
+            case SLEEP:
+                setColor(Color.CYAN);
+                break;
+            case ESTRUS:
+                setColor(Color.PINK);
+                break;
+            case REPRODUCE:
+                setColor(Color.MAGENTA);
+                break;
+            case ATTACK:
+                setColor(Color.RED);
+                break;
+            case EAT:
+                setColor(Color.GREEN);
+                break;
+            case MOVE:
+                setColor(Color.BLUE);
+                break;
+        }
+    }
 
+    private void action() {
+        //TODO написать метод
     }
 
     State getState() {
@@ -454,5 +490,14 @@ class Organism extends VisualObject {
         int result = super.hashCode();
         result = 31 * result + (getPosition() != null ? getPosition().hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Organism{" +
+                "age=" + age +
+                ", energy=" + energy +
+                ", state=" + state +
+                '}';
     }
 }

@@ -9,6 +9,8 @@ public class OrganismFactory {
     private HashMap<String, Organism.Chromosome> chromosomes = new HashMap<>();
 
     public OrganismFactory(Controller controller) {
+        if (controller == null) throw new NullPointerException();
+
         this.controller = controller;
     }
 

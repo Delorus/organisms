@@ -6,17 +6,29 @@ import ru.sherb.go.Controller;
 import ru.sherb.go.OrganismFactory;
 
 import java.awt.*;
+import java.util.Random;
 
 public class Launcher {
     public static void main(String[] args) {
-        Game game = new Game(400, 400, "The Organisms", Color.WHITE);
+        final int formSize = 500;
+        final int universeSize = 50;
+        final String title = "The Organism";
 
-        Controller controller = new Controller(10, Color.WHITE, Color.black);
+        Game game = new Game(formSize, formSize, title, Color.white);
+
+        Controller controller = new Controller(universeSize);
         game.addCollection(controller);
 
         controller.addBiome(Biome.createParadise(new Point.Float(0, 0), new Point.Float(10, 10)));
         OrganismFactory factory = new OrganismFactory(controller);
-        factory.createWithRandChromosomes(new Point.Float(0, 0), 2);
+
+        for (int i = 0; i < universeSize; i++) {
+            for (int j = 0; j < universeSize; j++) {
+                if (new Random().nextGaussian() < 0.5) {
+                    factory.createWithRandChromosomes(new Point.Float(i, j), 2);
+                }
+            }
+        }
 
         game.start();
     }

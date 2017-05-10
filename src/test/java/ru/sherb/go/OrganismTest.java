@@ -3,7 +3,9 @@ package ru.sherb.go;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.awt.*;
 import java.awt.geom.Point2D;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,8 +19,8 @@ class OrganismTest {
 
     @BeforeEach
     void setUp() {
+        controller = new Controller(100);
         factory = new OrganismFactory(controller);
-        controller = new Controller(0, null, null);
     }
 
     @Test
@@ -215,9 +217,6 @@ class OrganismTest {
 
         //-----------------------------------------------------
 
-        System.out.println("chr1:");
-        System.out.println(chromosome1);
-
         final Organism.Chromosome recessiveChromosome = new Organism.Chromosome(
                 (byte) 1,
                 (byte) 20,
@@ -235,25 +234,75 @@ class OrganismTest {
             recessiveChromosome.setDominant(i, false);
         }
 
-        System.out.println("recessive:");
-        System.out.println(recessiveChromosome);
-
         factory.addChromosome("recessive", recessiveChromosome);
 
-        organism = factory.createWithChromosomes(new Point2D.Float(10, 10), "chr1", "recessive"); //i don't understand how this works, but it works
+//        organism = factory.createWithChromosomes(new Point2D.Float(10, 10), "chr1", "recessive"); //i don't understand how this works, but it works
 
-        expectedPhenotype = new Chromosome(
-                (byte) 30,
-                (byte) -0,
-                (byte) 5,
-                (byte) 125,
+//        expectedPhenotype = new Chromosome(
+//                (byte) 30,
+//                (byte) -0,
+//                (byte) 5,
+//                (byte) 125,
+//                (byte) 100,
+//                (byte) 10,
+//                (byte) 10,
+//                (byte) 4,
+//                (byte) 0b0000_1000,
+//                (byte) 0b0000_1110,
+//                (byte) 0b0010_0010
+//        );
+    }
+
+    @Test
+    void prepare() {
+        final Organism.Chromosome predator = new Organism.Chromosome(
+                (byte) 50,
+                (byte) 10,
+                (byte) 70,
+                (byte) 15,
+                (byte) 15,
+                (byte) 40,
                 (byte) 100,
-                (byte) 10,
-                (byte) 10,
-                (byte) 4,
-                (byte) 0b0000_1000,
-                (byte) 0b0000_1110,
-                (byte) 0b0010_0010
+                (byte) 15,
+                (byte) 0b0010_0001,
+                (byte) 0b0000_0001,
+                (byte) 0b0000_0010
         );
+
+        final Chromosome animal = new Organism.Chromosome(
+                (byte) 70,
+                (byte) 30,
+                (byte) 15,
+                (byte) 60,
+                (byte) 60,
+                (byte) 30,
+                (byte) 15,
+                (byte) 45,
+                (byte) 0b0011_0001,
+                (byte) 0b0001_1000,
+                (byte) 0b0000_0001
+        );
+
+        /*
+         _|_0_|_1_|_2_|_3_|_4_|_5_|_6_|x
+         0|   |   |   |   |   |   |   |
+         1|   |   |   |   |   |   |   |
+         2|   | # |   |   |   |   |   |
+         3| # |   |   |   |   |   |   |
+         4|   |   |   |   |   |   |   |
+         5|   |   |   |   |   |   |   |
+         y
+         */
+
+        factory.addChromosome("predator", predator);
+        factory.addChromosome("animal", animal);
+        final Organism organism1 = factory.createWithChromosomes(new Point.Float(0, 3), "predator");
+        final Organism organism2 = factory.createWithChromosomes(new Point.Float(1, 2), "animal");
+
+        controller.init();
+        controller.update(0);
+
+        assertTrue(organism1.getState().equals(State.ATTACK), organism1.getState()::toString);
+        assertTrue(organism2.getState().equals(State.ESTRUS), organism2.getState()::toString);
     }
 }

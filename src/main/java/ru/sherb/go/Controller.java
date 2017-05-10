@@ -4,9 +4,8 @@ import ru.sherb.core.Collection;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public final class Controller extends Collection<Organism> {
@@ -20,7 +19,8 @@ public final class Controller extends Collection<Organism> {
     enum Phase {
         PREPARE,
         COLLISION,
-        ACTION
+        ACTION,
+        CLEAR;
     }
 
     public Controller(int universeSize) {
@@ -93,6 +93,16 @@ public final class Controller extends Collection<Organism> {
         phase = Phase.PREPARE;
     }
 
+    private Set<Organism> newGeneration;
+
+    void addChild(Point.Float position, Organism.Chromosome... chromosomes) {
+        if (newGeneration == null) {
+            newGeneration = new HashSet<>();
+        }
+
+        newGeneration.add(new Organism(this, position, chromosomes));
+    }
+
     @Override
     public void update(float dt) {
         switch (phase) {
@@ -104,14 +114,6 @@ public final class Controller extends Collection<Organism> {
                 phase = Phase.COLLISION;
                 break;
             case COLLISION:
-                //TODO удалить все "мертвые" объекты
-                assert getVisualObjects() != null;
-                final List<Organism> organisms = getVisualObjects().stream()
-                        .filter(organism -> Organism.State.DEAD.equals(organism.getState()))
-                        .collect(Collectors.toList());
-                for (Organism organism : organisms) {
-                    removeVisualObject(organism);
-                }
                 //TODO разобраться с коллизией
                 phase = Phase.ACTION;
                 break;
@@ -120,6 +122,22 @@ public final class Controller extends Collection<Organism> {
                 //TODO распараллелить действие
                 for (Organism organism : getVisualObjects()) {
                     organism.update(dt);
+                }
+                phase = Phase.CLEAR;
+
+                if (newGeneration != null) {
+                    newGeneration.forEach(this::addVisualObject);
+                    newGeneration = null;
+                }
+                break;
+            case CLEAR:
+                //TODO удалить все "мертвые" объекты
+                assert getVisualObjects() != null;
+                final List<Organism> organisms = getVisualObjects().stream()
+                        .filter(organism -> Organism.State.DEAD.equals(organism.getState()))
+                        .collect(Collectors.toList());
+                for (Organism organism : organisms) {
+                    removeVisualObject(organism);
                 }
                 phase = Phase.PREPARE;
                 break;

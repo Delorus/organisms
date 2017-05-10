@@ -10,8 +10,8 @@ import java.util.Random;
 
 public class Launcher {
     public static void main(String[] args) {
-        final int formSize = 500;
-        final int universeSize = 50;
+        final int formSize = 300;
+        final int universeSize = 10;
         final String title = "The Organism";
 
         Game game = new Game(formSize, formSize, title, Color.white);
@@ -24,7 +24,7 @@ public class Launcher {
 
         for (int i = 0; i < universeSize; i++) {
             for (int j = 0; j < universeSize; j++) {
-                if (new Random().nextGaussian() < 0.5) {
+                if (new Random().nextDouble() < 0.1) {
                     factory.createWithRandChromosomes(new Point.Float(i, j), 2);
                 }
             }

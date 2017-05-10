@@ -23,8 +23,8 @@ public class OrganismFactory {
     }
 
     public Organism createWithOneChromosome(Point2D.Float position, String chromosomeName) {
-        final Organism organism = new Organism(controller, chromosomes.get(chromosomeName));
-        organism.setPosition(position);
+        final Organism organism = new Organism(controller, position, chromosomes.get(chromosomeName));
+        controller.addVisualObject(organism);
         return organism;
     }
 
@@ -34,8 +34,8 @@ public class OrganismFactory {
             chromosomes[i] = this.chromosomes.get(chromosomeNames[i]);
         }
 
-        final Organism organism = new Organism(controller, chromosomes);
-        organism.setPosition(position);
+        final Organism organism = new Organism(controller, position, chromosomes);
+        controller.addVisualObject(organism);
         return organism;
     }
 
@@ -45,8 +45,8 @@ public class OrganismFactory {
                 .filter(o -> Math.random() <= 0.5)
                 .toArray(Organism.Chromosome[]::new);
 
-        final Organism organism = new Organism(controller, randChromosomes);
-        organism.setPosition(position);
+        final Organism organism = new Organism(controller, position, randChromosomes);
+        controller.addVisualObject(organism);
         return organism;
     }
 
@@ -70,8 +70,8 @@ public class OrganismFactory {
             );
         });
 
-        final Organism organism = new Organism(controller, chromosomeStream.limit(countChromosomes).toArray(Organism.Chromosome[]::new));
-        organism.setPosition(position);
+        final Organism organism = new Organism(controller, position, chromosomeStream.limit(countChromosomes).toArray(Organism.Chromosome[]::new));
+        controller.addVisualObject(organism);
         return organism;
     }
 }

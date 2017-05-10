@@ -3,10 +3,9 @@ package ru.sherb.go;
 import ru.sherb.core.VisualObject;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Optional;
+import java.awt.geom.Point2D;
+import java.util.*;
+import java.util.List;
 import java.util.function.Predicate;
 
 class Organism extends VisualObject {
@@ -133,38 +132,113 @@ class Organism extends VisualObject {
     private State state;
 
     enum State {
-        DEAD,
-        SLEEP,
-        ESTRUS,
-        REPRODUCE,
-        ATTACK,
-        EAT, //а надо ли?
-        MOVE;
+        DEAD {
+            @Override
+            void action(Organism self) {
+                //passed
+                self.end();
+            }
+        },
+        SLEEP {
+            @Override
+            void action(Organism self) {
+                self.energy += self.phenotype.get(Chromosome.EFFICIENCY) * 0.25;
+            }
+        },
+        ESTRUS {
+            @Override
+            void action(Organism self) {
+                //passed
+                self.energy--; //TODO поиграться с константой
+            }
+        },
+        REPRODUCE {
+            @Override
+            void action(Organism self) {
+                //TODO проверить и переписать действие
+                // возможно возникновение сразу двух детей, из-за того что это действие будет происходить у обоих родителей
+                assert self.hereditaryChromosome != null && other.hereditaryChromosome != null;
+//                final Organism child = new Organism(self.controller, self.hereditaryChromosome, other.hereditaryChromosome);
+                List<Organism> neighbors = self.getNeighbors(self.eyeshot);
+                Organism parent = self;
+                if (neighbors.size() == 8) {
+                    neighbors = other.getNeighbors(other.eyeshot);
+                    parent = other;
+                    if (neighbors.size() == 8) {
+                        return;
+                    }
+                }
+
+                for (int i = parent.controller.motion((int) parent.getPosition().x - 1);
+                     i != parent.controller.motion((int) parent.getPosition().x + 2);
+                     i = parent.controller.motion(i + 1)) {
+
+                    for (int j = parent.controller.motion((int) parent.getPosition().y - 1);
+                         j != parent.controller.motion((int) parent.getPosition().y + 2);
+                         j = parent.controller.motion(j + 1)) {
+
+                        if (!parent.controller.getOrganism(i, j).isPresent()) {
+//                            parent.setPosition(new Point.Float(i, j));
+//                            final Organism child = new Organism(self.controller, new Point.Float(i, j), self.hereditaryChromosome, other.hereditaryChromosome);
+                            parent.controller.addChild(new Point.Float(i, j), self.hereditaryChromosome, other.hereditaryChromosome);
+                            return;
+                        }
+                    }
+                }
+            }
+        },
+        ATTACK {
+            @Override
+            void action(Organism self) {
+                //TODO переписать действие
+                //проверять не умерла ли еще клетка
+                final int attack = self.phenotype.get(Chromosome.POWER);
+                final int defend = other.phenotype.get(Chromosome.POWER);
+                if (attack > defend) {
+                    self.energy += attack - defend;
+                    other.state = State.DEAD;
+                } else {
+                    self.energy -= defend;
+                    other.energy -= attack;
+                }
+            }
+        },
+        NOTHING {
+            @Override
+            void action(Organism self) {
+                //passed
+                self.energy--;
+            }
+        }; //TODO временное решение
+//        EAT, //а надо ли?
+//        MOVE;
 
         static Organism other;
 
-        void with(Organism other) {
+        void to(Organism other) {
             State.other = other;
         }
 
-        Optional<Organism> with() {
+        Optional<Organism> to() {
             return Optional.ofNullable(other);
         }
-    }
 
+        abstract void action(Organism self);
+    }
 
 
     private ArrayList<Organism> neighbors; //TODO изменить на LinkedList когда соседей станет больше 8
 
 
-    Organism(Controller controller, Chromosome... chromosomes) {
+    Organism(Controller controller, Point.Float position, Chromosome... chromosomes) {
         super(controller.getOrganismSize());
 
         assert chromosomes[0] != null;
         this.chromosomes = chromosomes.clone();
 
         this.controller = controller;
-        this.controller.addVisualObject(this);
+//        this.controller.addVisualObject(this);
+        setPosition(position);
     }
 
     /**
@@ -288,6 +362,7 @@ class Organism extends VisualObject {
         this.age = 0;
         this.energy = phenotype.get(Chromosome.EFFICIENCY); //TODO решить, ограничивать ли количество энергии или нет
         //TODO доделать метод
+        hereditaryChromosome = phenotype; //TODO изменить
         //init hereditaryChromosome;
         setShouldBeRender(true);
     }
@@ -334,8 +409,8 @@ class Organism extends VisualObject {
      *      <li>Если энергии клетки меньше чем ее агрессия, то клетка начинает искать, кто из ее соседей подойдет ей в качестве пищи,
      *      если такой найден, то клетка выставляет статус нападения {@link State#ATTACK}, установив его в качестве своей цели, и завершает ход</li>
      *
-     *      <li>Если количество соседей умноженное на 16, больше чем социальность организма,
-     *      то организм ставит флаг перемещение({@link State#MOVE}) на любую незанятую соседнюю клетку</li>
+     *      <li>(не актуально)Если количество соседей умноженное на 16, больше чем социальность организма,
+     *      то организм ставит флаг перемещение(@link State#MOVE}) на любую незанятую соседнюю клетку</li>
      *
      *      <li>Если количество соседей, делающих одно и тоже, умноженное на 16, больше чем число, обратно пропорциональное гену эмпатии,
      *      то организм скопирует их поведение (флаги)</li>
@@ -362,34 +437,59 @@ class Organism extends VisualObject {
 
         if (energy >= (Byte.MAX_VALUE + 1 - phenotype.get(Chromosome.REPRODUCTION))) {
             //TODO изменить механизм: удалить состояние "спаривание", оставить только готовность
-            final Optional<Organism> readyToMateOrg = checkNeighbors(eyeshot, organism -> State.ESTRUS.equals(organism.state));
+            final Optional<Organism> readyToMateOrg = getNeighbors(eyeshot).stream()
+                    .filter(organism -> State.ESTRUS.equals(organism.state))
+                    .findFirst();
+
             if (!readyToMateOrg.isPresent()) {
                 state = State.ESTRUS;
                 return;
             }
 
             state = State.REPRODUCE;
-            state.with(readyToMateOrg.get());
+            state.to(readyToMateOrg.get());
             return;
         }
 
         if (energy < phenotype.get(Chromosome.AGGRESSION)) {
-            final Optional<Organism> food = checkNeighbors(eyeshot, organism ->
-                    checkForMatchGene(organism.phenotype.get(Chromosome.TYPE), phenotype.get(Chromosome.NUTRITION)) == 0);
+            final Optional<Organism> food = getNeighbors(eyeshot).stream()
+                    .filter(organism ->
+                            checkForMatchGene(organism.phenotype.get(Chromosome.TYPE), phenotype.get(Chromosome.NUTRITION))
+                                    == 0)
+                    .findFirst();
 
             if (food.isPresent()) {
                 state = State.ATTACK;
-                state.with(food.get());
+                state.to(food.get());
                 return;
             }
         }
 
         //TODO доделать социальность и эмпатию
-        state = State.SLEEP;
+        getNeighbors(eyeshot);
+        assert neighbors != null;
+        final HashMap<State, Long> match = new HashMap<>(8, 2); //создание хэш мапы с фиксированным размером
+        Arrays.stream(State.values())
+                .forEach(state -> match.put(state, neighbors.stream()
+                        .filter(organism -> state.equals(organism.getState()))
+                        .count()
+                ));
+        match.entrySet()
+                .stream()
+                .max(Comparator.comparing(Map.Entry::getValue))
+                .filter(entry ->
+                        entry.getValue() * 16 > Byte.MAX_VALUE + 1 - phenotype.get(Chromosome.EMPATHY))
+                .ifPresent(entry -> {
+                    state = entry.getKey();
+                    state.to(entry.getKey().to().orElse(null));
+                });
+
+
+        state = State.NOTHING;
     }
 
     boolean isTooOld() {
-        return age >= phenotype.get(Chromosome.AGE);
+        return age * 8 >= phenotype.get(Chromosome.AGE);
     }
 
     private void getEffectFromEnvironment() {
@@ -402,7 +502,7 @@ class Organism extends VisualObject {
         }
     }
 
-    private Optional<Organism> checkNeighbors(int range, Predicate<Organism> predicate) {
+    private List<Organism> getNeighbors(int range) {
         final int x = (int) getPosition().x;
         final int y = (int) getPosition().y;
 
@@ -425,10 +525,36 @@ class Organism extends VisualObject {
             }
         }
 
-        return neighbors.stream()
-                .filter(predicate)
-                .findFirst();
+        return neighbors;
     }
+
+//    private Optional<Organism> checkNeighbors(int range, Predicate<Organism> predicate) {
+//        final int x = (int) getPosition().x;
+//        final int y = (int) getPosition().y;
+//
+//        if (neighbors == null) {
+//            neighbors = new ArrayList<>(8);
+//            for (int i = controller.motion(x - range);
+//                 i != controller.motion(x + range + 1);
+//                 i = controller.motion(i + 1)) {
+//
+//                for (int j = controller.motion(y - range);
+//                     j != controller.motion(y + range + 1);
+//                     j = controller.motion(j + 1)) {
+//
+//                    controller.getOrganism(i, j).ifPresent(organism -> {
+//                        if (!organism.equals(this)) {
+//                            neighbors.add(organism);
+//                        }
+//                    });
+//                }
+//            }
+//        }
+//
+//        return neighbors.stream()
+//                .filter(predicate)
+//                .findFirst();
+//    }
 
     private int checkForMatchGene(byte effect, byte gene) {
         return ~(~effect | gene);
@@ -436,6 +562,7 @@ class Organism extends VisualObject {
 
     void setColorDependState() {
         //TODO перенести выбор цвета в num
+        //TODO сделать несколько разновидностей окрасок: в зависимости от действий, от фенотипа, от старости
         switch (state) {
             case DEAD:
                 setColor(Color.YELLOW);
@@ -452,17 +579,21 @@ class Organism extends VisualObject {
             case ATTACK:
                 setColor(Color.RED);
                 break;
-            case EAT:
-                setColor(Color.GREEN);
-                break;
-            case MOVE:
-                setColor(Color.BLUE);
+//            case EAT:
+//                setColor(Color.GREEN);
+//                break;
+//            case MOVE:
+//                setColor(Color.BLUE);
+//                break;
+            case NOTHING:
+                setColor(Color.ORANGE);
                 break;
         }
     }
 
     private void action() {
         //TODO написать метод
+        this.state.action(this);
     }
 
     State getState() {
@@ -495,7 +626,8 @@ class Organism extends VisualObject {
     @Override
     public String toString() {
         return "Organism{" +
-                "age=" + age +
+                "id=" + id +
+                ", age=" + age +
                 ", energy=" + energy +
                 ", state=" + state +
                 '}';

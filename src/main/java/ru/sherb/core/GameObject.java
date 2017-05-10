@@ -1,7 +1,7 @@
 package ru.sherb.core;
 
 public abstract class GameObject {
-    private final int id;
+    public final int id;
 
     /**
      * Уникальность {@code id} обеспечивается вызывающим объектом.
